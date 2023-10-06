@@ -82,17 +82,36 @@ def insert(root, key, word):
     return balance(root)
 
 def bulkInsert(root, items: List[Tuple[int, str]]) -> Node:
-    for key, word in items:
-        root = insert(root, key, word)
-    return root
+    nodes_in_order = []
+    
+    # Extract all nodes from existing tree
+    inorder_traversal(root, nodes_in_order)
+    
+    # Add new nodes from items
+    nodes_in_order.extend(items)
+    
+    # Sort nodes by key
+    nodes_in_order.sort(key=lambda x: x[0])
+    
+    # Build a new balanced AVL tree
+    return construct_avl_tree(nodes_in_order)
 
-def inorder_traversal_filtered(root, nodes_list, exclude_keys):
+def inorder_traversal(root, nodes_list):
     if not root:
         return
-    inorder_traversal_filtered(root.leftchild, nodes_list, exclude_keys)
-    if root.key not in exclude_keys:
-        nodes_list.append((root.key, root.word))
-    inorder_traversal_filtered(root.rightchild, nodes_list, exclude_keys)
+    inorder_traversal(root.leftchild, nodes_list)
+    nodes_list.append((root.key, root.word))
+    inorder_traversal(root.rightchild, nodes_list)
+
+def construct_avl_tree(nodes_list):
+    if not nodes_list:
+        return None
+    mid_idx = len(nodes_list) // 2
+    key, word = nodes_list[mid_idx]
+    root = Node(key, word, None, None)
+    root.leftchild = construct_avl_tree(nodes_list[:mid_idx])
+    root.rightchild = construct_avl_tree(nodes_list[mid_idx+1:])
+    return root
 
 def bulkDelete(root, keys: List[int]) -> Node:
     keys_set = set(keys)
