@@ -68,7 +68,10 @@ def balance(node):
         update_height(node)
     return node
 
-# Main Methods
+# insert
+# For the tree rooted at root, insert the given key,word pair and then balance as per AVL trees.
+# The key is guaranteed to not be in the tree.
+# Return the root.
 
 def insert(root, key, word):
     if not root:
@@ -81,38 +84,30 @@ def insert(root, key, word):
     
     return balance(root)
 
+# bulkInsert
+# The parameter items should be a list of pairs of the form [key,word] where key is an integer and word is a string.
+# For the tree rooted at root, first insert all of the [key,word] pairs as if the tree were a standard BST, with no balancing.
+# Then do a preorder traversal of the [key,word] pairs and use this traversal to build a new tree using AVL insertion.
+# Return the root
 def bulkInsert(root, items: List[Tuple[int, str]]) -> Node:
-    nodes_in_order = []
-    
-    # Extract all nodes from existing tree
-    inorder_traversal(root, nodes_in_order)
-    
-    # Add new nodes from items
-    nodes_in_order.extend(items)
-    
-    # Sort nodes by key
-    nodes_in_order.sort(key=lambda x: x[0])
-    
-    # Build a new balanced AVL tree
-    return construct_avl_tree(nodes_in_order)
-
-def inorder_traversal(root, nodes_list):
-    if not root:
-        return
-    inorder_traversal(root.leftchild, nodes_list)
-    nodes_list.append((root.key, root.word))
-    inorder_traversal(root.rightchild, nodes_list)
-
-def construct_avl_tree(nodes_list):
-    if not nodes_list:
-        return None
-    mid_idx = len(nodes_list) // 2
-    key, word = nodes_list[mid_idx]
-    root = Node(key, word, None, None)
-    root.leftchild = construct_avl_tree(nodes_list[:mid_idx])
-    root.rightchild = construct_avl_tree(nodes_list[mid_idx+1:])
+    for key, word in items:
+        root = insert(root, key, word)
     return root
 
+def inorder_traversal_filtered(root, nodes_list, exclude_keys):
+    if not root:
+        return
+    inorder_traversal_filtered(root.leftchild, nodes_list, exclude_keys)
+    if root.key not in exclude_keys:
+        nodes_list.append((root.key, root.word))
+    inorder_traversal_filtered(root.rightchild, nodes_list, exclude_keys)
+
+# bulkDelete
+# The parameter keys should be a list of keys.
+# For the tree rooted at root, first tag all the corresponding nodes (however you like),
+# Then do a preorder traversal of the [key,word] pairs, ignoring the tagged nodes,
+# and use this traversal to build a new tree using AVL insertion.
+# Return the root.
 def bulkDelete(root, keys: List[int]) -> Node:
     keys_set = set(keys)
     nodes_in_order = []
@@ -122,6 +117,11 @@ def bulkDelete(root, keys: List[int]) -> Node:
         new_root = insert(new_root, key, word)
     return new_root
 
+# search
+# For the tree rooted at root, calculate the list of keys on the path from the root to the search_key,
+# including the search key, and the word associated with the search_key.
+# Return the json stringified list [key1,key2,...,keylast,word] with indent=2.
+# If the search_key is not in the tree return a word of None.
 def search(root, search_key: int) -> str:
     path = []
     current = root
@@ -135,6 +135,10 @@ def search(root, search_key: int) -> str:
             current = current.leftchild
     return json.dumps(None, indent=2)
 
+# replace
+# For the tree rooted at root, replace the word corresponding to the key search_key by replacement_word.
+# The search_key is guaranteed to be in the tree.
+# Return the root
 def replace(root, search_key: int, replacement_word: str) -> Node:
     if not root:
         return None
