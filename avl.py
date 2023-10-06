@@ -1,4 +1,3 @@
-
 import json
 from typing import List
 
@@ -30,113 +29,78 @@ def dump(root: Node) -> str:
     return json.dumps(dict_repr,indent = 2)
 
 
-def getHeight(node):
+def height(node):
     if not node:
         return 0
-    return node.height
+    return max(height(node.leftchild), height(node.rightchild)) + 1
 
-def getBalance(node):
-    if not node:
-        return 0
-    return getHeight(node.leftchild) - getHeight(node.rightchild)
+def balance_factor(node):
+    return height(node.leftchild) - height(node.rightchild)
 
-def leftRotate(z):
-    y = z.rightchild
-    T2 = y.leftchild
-    
-    # Perform rotation
-    y.leftchild = z
-    z.rightchild = T2
-    
-    # Update heights
-    z.height = 1 + max(getHeight(z.leftchild), getHeight(z.rightchild))
-    y.height = 1 + max(getHeight(y.leftchild), getHeight(y.rightchild))
-    
-    # Return the new root
+def left_rotate(x):
+    y = x.rightchild
+    x.rightchild = y.leftchild
+    y.leftchild = x
     return y
 
-def rightRotate(y):
+def right_rotate(y):
     x = y.leftchild
-    T2 = x.rightchild
-    
-    # Perform rotation
+    y.leftchild = x.rightchild
     x.rightchild = y
-    y.leftchild = T2
-    
-    # Update heights
-    y.height = 1 + max(getHeight(y.leftchild), getHeight(y.rightchild))
-    x.height = 1 + max(getHeight(x.leftchild), getHeight(x.rightchild))
-    
-    # Return the new root
     return x
 
-def insert(node, key, word):
-    # Perform standard BST insert
-    if not node:
-        return Node(key, word)
-    
-    if key < node.key:
-        node.leftchild = insert(node.leftchild, key, word)
-    else:
-        node.rightchild = insert(node.rightchild, key, word)
-
-    # Update the height of the ancestor node
-    node.height = 1 + max(getHeight(node.leftchild), getHeight(node.rightchild))
-    
-    # Get the balance factor to check whether it became unbalanced
-    balance = getBalance(node)
-    
-    # Balance the node
-    # Left Left
-    if balance > 1 and key < node.leftchild.key:
-        return rightRotate(node)
-    
-    # Right Right
-    if balance < -1 and key > node.rightchild.key:
-        return leftRotate(node)
-    
-    # Left Right
-    if balance > 1 and key > node.leftchild.key:
-        node.leftchild = leftRotate(node.leftchild)
-        return rightRotate(node)
-    
-    # Right Left
-    if balance < -1 and key < node.rightchild.key:
-        node.rightchild = rightRotate(node.rightchild)
-        return leftRotate(node)
-    
+def balance(node):
+    if balance_factor(node) > 1:
+        if balance_factor(node.leftchild) < 0:
+            node.leftchild = left_rotate(node.leftchild)
+        node = right_rotate(node)
+    elif balance_factor(node) < -1:
+        if balance_factor(node.rightchild) > 0:
+            node.rightchild = right_rotate(node.rightchild)
+        node = left_rotate(node)
     return node
 
+def insert(root, key, word):
+    if not root:
+        return Node(key, word, None, None)
+    
+    # Standard BST insert
+    if key < root.key:
+        root.leftchild = insert(root.leftchild, key, word)
+    else:
+        root.rightchild = insert(root.rightchild, key, word)
+    
+    # Balance the node again
+    return balance(root)
 
 
-def inorderTraversal(node):
-    """
-    Perform an inorder traversal of the tree rooted at node, 
-    returning a list of nodes in sorted order.
-    """
-    result = []
-    if node:
-        result.extend(inorderTraversal(node.leftchild))
-        result.append((node.key, node.word))
-        result.extend(inorderTraversal(node.rightchild))
-    return result
 
-def sortedListToBST(arr, start, end):
-    """
-    Convert a sorted list of key-word pairs to a balanced binary search tree.
-    """
-    # base case
-    if start > end:
+def insert_without_balance(root, key, word):
+    if not root:
+        return Node(key, word, None, None)
+    
+    if key < root.key:
+        root.leftchild = insert_without_balance(root.leftchild, key, word)
+    else:
+        root.rightchild = insert_without_balance(root.rightchild, key, word)
+    
+    return root
+
+def inorder_traversal(root, nodes_list):
+    if not root:
+        return
+    inorder_traversal(root.leftchild, nodes_list)
+    nodes_list.append((root.key, root.word))
+    inorder_traversal(root.rightchild, nodes_list)
+
+def construct_avl_tree(nodes_list):
+    if not nodes_list:
         return None
-    
-    # Get the middle element and make it root
-    mid = (start + end) // 2
-    root = Node(arr[mid][0], arr[mid][1])
-    
-    # Recursively build the left and right subtrees
-    root.leftchild = sortedListToBST(arr, start, mid-1)
-    root.rightchild = sortedListToBST(arr, mid+1, end)
-    
+    mid_idx = len(nodes_list) // 2
+    key, word = nodes_list[mid_idx]
+    root = Node(key, word, None, None)
+    root.leftchild = construct_avl_tree(nodes_list[:mid_idx])
+    root.rightchild = construct_avl_tree(nodes_list[mid_idx+1:])
     return root
 
 # bulkInsert
@@ -145,19 +109,27 @@ def sortedListToBST(arr, start, end):
 # Then do a preorder traversal of the [key,word] pairs and use this traversal to build a new tree using AVL insertion.
 # Return the root
 def bulkInsert(root, items):
-    """
-    Perform bulk insertion of key-word pairs into the AVL tree rooted at root.
-    """
-    # Insert items into the tree without balancing
-    for key, word in items:
-        root = insert(root, key, word)
+    # Step 1: Standard BST insert without balancing
+    for item in items:
+        key, word = item
+        root = insert_without_balance(root, key, word)
     
-    # Retrieve nodes in sorted order using inorder traversal
-    sorted_nodes = inorderTraversal(root)
+    # Step 2: Extract all nodes in order
+    nodes_in_order = []
+    inorder_traversal(root, nodes_in_order)
     
-    # Build a balanced tree from the sorted nodes
-    return sortedListToBST(sorted_nodes, 0, len(sorted_nodes)-1)
+    # Step 3: Construct a new balanced AVL tree
+    root = construct_avl_tree(nodes_in_order)
+    return root
 
+
+def inorder_traversal_filtered(root, nodes_list, exclude_keys):
+    if not root:
+        return
+    inorder_traversal_filtered(root.leftchild, nodes_list, exclude_keys)
+    if root.key not in exclude_keys:
+        nodes_list.append((root.key, root.word))
+    inorder_traversal_filtered(root.rightchild, nodes_list, exclude_keys)
 # bulkDelete
 # The parameter keys should be a list of keys.
 # For the tree rooted at root, first tag all the corresponding nodes (however you like),
@@ -165,15 +137,18 @@ def bulkInsert(root, items):
 # and use this traversal to build a new tree using AVL insertion.
 # Return the root.
 def bulkDelete(root, keys):
-    """
-    Delete nodes with keys in the provided list from the tree rooted at root,
-    then rebuild the tree in a balanced manner.
-    """
-    # Mark nodes for deletion and retrieve nodes in sorted order
-    sorted_nodes = inorderTraversal(root, set(keys))
+    keys_set = set(keys)  # for O(1) lookup
     
-    # Build a balanced tree from the sorted nodes
-    return sortedListToBST(sorted_nodes, 0, len(sorted_nodes)-1)
+    # Step 1: Extract all nodes not in keys_set in order
+    nodes_in_order = []
+    inorder_traversal_filtered(root, nodes_in_order, keys_set)
+    
+    # Step 2: Construct a new balanced AVL tree
+    root = construct_avl_tree(nodes_in_order)
+    return root
+
+
+
 
 def inorderTraversal(node, delete_keys):
     """
@@ -195,70 +170,33 @@ def inorderTraversal(node, delete_keys):
 # Return the json stringified list [key1,key2,...,keylast,word] with indent=2.
 # If the search_key is not in the tree return a word of None.
 def search(root, search_key):
-    """
-    Search for a node with key search_key in the tree rooted at root,
-    returning a JSON string containing the path of keys and the word.
-    """
-    path, word = searchHelper(root, search_key, [])
-    
-    # Convert the path and word to a JSON string
-    result = path + [word]
-    return json.dumps(result, indent=2)
+    path = []
+    current = root
+    while current:
+        path.append(current.key)
+        if current.key == search_key:
+            return json.dumps(path + [current.word], indent=2)
+        elif current.key < search_key:
+            current = current.rightchild
+        else:
+            current = current.leftchild
+    return json.dumps(None, indent=2)
 
-def searchHelper(node, search_key, path):
-    """
-    Helper function for search, recursively searches for the key,
-    updating the path as it descends the tree.
-    """
-    # Base case: node is None, key not found
-    if node is None:
-        return path, None
-    
-    # Key found
-    if node.key == search_key:
-        path.append(node.key)
-        return path, node.word
-    
-    # Key is less than node's key, search left subtree
-    elif search_key < node.key:
-        path.append(node.key)
-        return searchHelper(node.leftchild, search_key, path)
-    
-    # Key is greater than node's key, search right subtree
-    else:
-        path.append(node.key)
-        return searchHelper(node.rightchild, search_key, path)
+
 
 # replace
 # For the tree rooted at root, replace the word corresponding to the key search_key by replacement_word.
 # The search_key is guaranteed to be in the tree.
 # Return the root
 def replace(root, search_key, replacement_word):
-    """
-    Replace the word of the node with key search_key in the tree rooted at root
-    with replacement_word.
-    """
-    node = findNode(root, search_key)
-    if node:
-        node.word = replacement_word
+    if not root:
+        return None
+    if root.key == search_key:
+        root.word = replacement_word
+    elif root.key < search_key:
+        root.rightchild = replace(root.rightchild, search_key, replacement_word)
+    else:
+        root.leftchild = replace(root.leftchild, search_key, replacement_word)
     return root
 
-def findNode(node, search_key):
-    """
-    Find and return the node with key search_key in the tree rooted at node.
-    """
-    # Base case: node is None, key not found
-    if node is None:
-        return None
-    
-    # Key found
-    if node.key == search_key:
-        return node
-    
-    # Key is less than node's key, search left subtree
-    elif search_key < node.key:
-        return findNode(node.leftchild, search_key)
-    
-    # Key is greater than node's key, search right subtree
-    else:
-        return findNode(node.rightchild, search_key)
+
